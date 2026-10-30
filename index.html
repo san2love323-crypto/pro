@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>코딩 집사 PRO</title>
+<meta name="robots" content="noindex"><meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* Layout: agent IDE. Left: projects + file tree. Center: task log (plan/steps/diffs) + composer. Right: editor / live run / console. */
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#1f2630;--line:#2d3542;--fg:#e6edf3;--muted:#8b98a8;--accent:#58a6ff;--green:#3fb950;--amber:#d29922;--red:#f85149;--purple:#bc8cff;--mono:"JetBrains Mono",Consolas,monospace;--body:"Noto Sans KR",system-ui,sans-serif;color-scheme:dark}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f4f6fa;--panel:#ffffff;--panel2:#eaeef5;--line:#d3dbe6;--fg:#1b2330;--muted:#5d6b7e;--accent:#0a66d6;--green:#1f8f45;--amber:#9a6700;--red:#cf222e;--purple:#7a3fd6;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f4f6fa;--panel:#ffffff;--panel2:#eaeef5;--line:#d3dbe6;--fg:#1b2330;--muted:#5d6b7e;--accent:#0a66d6;--green:#1f8f45;--amber:#9a6700;--red:#cf222e;--purple:#7a3fd6;color-scheme:light}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.55}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:7px 12px}
+button:hover{border-color:var(--accent)}button:disabled{opacity:.5;cursor:default}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+button.sm{padding:4px 9px;font-size:12px;border-radius:6px}button.act{background:var(--accent);color:#fff;border-color:var(--accent)}
+input[type=text],input[type=password],select,textarea{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px}
+textarea{resize:vertical;line-height:1.5}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.app{display:grid;grid-template-columns:250px minmax(0,1fr) 440px;height:100%;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.rail,.side{background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.rail{border-right:1px solid var(--line)}.side{border-left:1px solid var(--line)}
+.hd{padding:12px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--purple));display:grid;place-items:center;font-family:var(--mono);font-weight:700;color:#fff;font-size:13px}
+.rail h1{font-size:15px;margin:0}.rail h1 small{display:block;font-size:11px;color:var(--muted);font-weight:400}
+.projects{padding:8px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--line);max-height:30vh;overflow:auto}
+.projects button{text-align:left;border:none;background:transparent;padding:7px 10px;border-radius:8px;display:flex;justify-content:space-between;gap:6px}
+.projects button.on{background:var(--panel2)}.projects .x{opacity:0;font-size:12px}.projects button:hover .x{opacity:.7}
+.tree{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:1px;font-family:var(--mono);font-size:12px}
+.tree .f{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;cursor:pointer}
+.tree .f:hover,.tree .f.on{background:var(--panel2)}.tree .f b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.tree .f small{color:var(--muted)}.tree .f .st{width:8px;height:8px;border-radius:50%}
+.st.new{background:var(--green)}.st.mod{background:var(--amber)}
+.ft{padding:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;font-size:12px}
+.main{display:flex;flex-direction:column;min-height:0;min-width:0}
+.bar{display:flex;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.bar .ttl{font-weight:700;flex:1;min-width:120px}
+.log{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.ev{display:flex;gap:10px;max-width:960px}
+.ev .ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;flex:none;font-size:13px;background:var(--panel2)}
+.ev .bd{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;overflow-wrap:anywhere}
+.ev.user .bd{background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
+.ev.plan .bd{border-color:color-mix(in srgb,var(--purple) 50%,var(--line))}
+.ev.ok .bd{border-color:color-mix(in srgb,var(--green) 50%,var(--line))}
+.ev.err .bd{border-color:color-mix(in srgb,var(--red) 50%,var(--line))}
+.ev .bd p{margin:.3em 0}.ev .bd ol,.ev .bd ul{margin:.3em 0;padding-left:20px}
+.ev .bd pre{background:#0b0f14;color:#e6edf3;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;font-family:var(--mono);font-size:12px;margin:.5em 0}
+.ev .bd code{font-family:var(--mono);font-size:.92em}.ev .bd :not(pre)>code{background:var(--panel2);padding:1px 6px;border-radius:5px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.step{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--panel2);font-size:12px}
+.step.done{color:var(--green)}.step.run{color:var(--accent)}.step.fail{color:var(--red)}
+.spin{display:inline-block;width:10px;height:10px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.filechg{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.filechg div{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:6px;background:var(--panel2);cursor:pointer}
+.composer{border-top:1px solid var(--line);background:var(--panel);padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
+.composer textarea{width:100%;min-height:70px;max-height:220px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{font-size:12px;padding:4px 10px;border-radius:999px}
+.side .tabs{display:flex;border-bottom:1px solid var(--line)}
+.side .tabs button{flex:1;border:none;border-radius:0;background:transparent;padding:10px 6px;font-weight:700;color:var(--muted);font-size:13px}
+.side .tabs button.on{color:var(--fg);box-shadow:inset 0 -2px var(--accent)}
+.side .body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.side iframe{width:100%;flex:1;border:1px solid var(--line);border-radius:10px;background:#fff;min-height:280px}
+.editor{flex:1;width:100%;font-family:var(--mono);font-size:12.5px;line-height:1.5;background:#0b0f14;color:#e6edf3;border:1px solid var(--line);border-radius:10px;padding:10px;white-space:pre;overflow:auto;tab-size:2;min-height:300px;resize:none}
+.console{font-family:var(--mono);font-size:12px;background:#0b0f14;color:#e6edf3;border:1px solid var(--line);border-radius:10px;padding:8px;overflow:auto;max-height:40vh;min-height:80px;white-space:pre-wrap;margin:0}
+.console .e{color:#ff7b72}.console .w{color:#e3b341}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;background:var(--panel2)}
+.pill.g{color:var(--green)}.pill.r{color:var(--red)}.pill.a{color:var(--amber)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;display:grid;place-items:center;padding:16px}
+.overlay .box{width:min(600px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;max-height:90vh;overflow:auto}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:999px;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}
+.toast.show{opacity:1}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted)}.dot.on{background:var(--green)}
+.diff{font-family:var(--mono);font-size:12px;white-space:pre-wrap}.diff .add{background:rgba(63,185,80,.18)}.diff .del{background:rgba(248,81,73,.18);text-decoration:line-through;opacity:.8}
+.domain{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
+.domain button{text-align:left;font-size:12px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}.domain button small{color:var(--muted)}
+.mob{display:none}
+@media (max-width:1100px){.app{grid-template-columns:1fr}.rail,.side{display:none}.rail.show,.side.show{display:flex;position:fixed;inset:0;z-index:15}.mob{display:inline-flex}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+ <aside class="rail" id="rail">
+  <div class="hd"><div class="logo">&gt;_</div><h1>코딩 집사 PRO<small id="engineLabel">엔진 확인 중…</small></h1><button class="sm mob" id="railX" style="margin-left:auto">✕</button></div>
+  <div style="padding:8px 8px 0"><button class="pri" id="newProj" style="width:100%">+ 새 프로젝트</button></div>
+  <div class="projects" id="projects"></div>
+  <div style="padding:8px 10px 0;display:flex;justify-content:space-between;align-items:center"><span class="eyebrow">파일</span><span><button class="sm" id="upBtn" title="파일 올리기">⬆</button><button class="sm" id="zipBtn" title="zip 다운로드">📦</button></span></div>
+  <div class="tree" id="tree"></div>
+  <div class="ft"><div style="display:flex;justify-content:space-between;align-items:center"><span><span class="dot" id="keyDot"></span> <span id="keyState"></span></span><button class="sm" id="setKey">설정</button></div><div id="usage" style="color:var(--muted)"></div></div>
+ </aside>
+ <main class="main">
+  <div class="bar"><button class="sm mob" id="railBtn">☰</button><div class="ttl" id="projTitle"></div><select id="engineSel"></select><select id="domainSel"></select><button class="sm" id="memoBtn">📎 메모</button><button class="sm" id="histClr">🧹</button><button class="sm mob" id="sideBtn">📁</button></div>
+  <div class="log" id="log"></div>
+  <div class="composer">
+   <div class="chips" id="chips"></div>
+   <textarea id="input" placeholder="무엇을 만들까요? 예: 국어 교실 같은 학습 사이트 만들어줘 / index.html에 다크모드 추가해줘 / 이 에러 고쳐줘: … (Enter 전송, Shift+Enter 줄바꿈)"></textarea>
+   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:12px;color:var(--muted)"><input type="checkbox" id="autoFix" checked> 실행해서 에러 자동 수정 (최대 <select id="maxFix" style="padding:2px 4px"><option>3</option><option selected>5</option><option>8</option></select>회)</label><label style="font-size:12px;color:var(--muted)"><input type="checkbox" id="planFirst" checked> 계획 먼저</label><span style="flex:1"></span><button id="stopBtn" class="sm" hidden>■ 중지</button><button class="pri" id="send">실행 ▶</button></div>
+  </div>
+ </main>
+ <aside class="side" id="side">
+  <div class="tabs"><button class="on" data-st="run">▶ 실행</button><button data-st="edit">✏️ 편집</button><button data-st="console">🖥 콘솔</button><button class="sm mob" id="sideX" style="flex:0;padding:10px">✕</button></div>
+  <div class="body" id="sideBody"></div>
+ </aside>
+</div>
+<input type="file" id="fileIn" multiple hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= STORE ================= */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const store={get(k,d){try{const v=localStorage.getItem('cbp.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('cbp.'+k,JSON.stringify(v))}catch(e){}}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2000)}
+let projects=store.get('projects',null);if(!projects||!projects.length){projects=[{id:'p1',name:'첫 프로젝트',memo:'',domain:'web',files:{},events:[],open:null}];store.set('projects',projects)}
+let cur=store.get('cur','p1');if(!projects.find(p=>p.id===cur))cur=projects[0].id;
+const P=()=>projects.find(p=>p.id===cur);const saveP=()=>store.set('projects',projects);
+let abort=null,sideTab='run',consoleLines=[],sampleFn=null,busy=false;
+const DOMAINS={web:['🌐 웹사이트','index.html 한 파일. 외부 리소스는 cdnjs만. 모바일 대응, localStorage, 한국어 UI. 반드시 실행 가능한 완성본.'],game:['🎲 웹 게임','Canvas 기반 단일 HTML 게임. requestAnimationFrame 루프, 키보드·터치 입력, 점수·재시작. 60fps 고려.'],pwa:['📱 모바일 웹앱','PWA: manifest.json + service worker + index.html. 홈 화면 설치, 오프라인 동작, 큰 터치 타깃.'],firebase:['🔥 Firebase 연동','Firebase v9 modular(CDN import). 익명 로그인·Firestore 실시간 동기화. firebaseConfig는 사용자가 채울 자리 표시.'],discord:['🤖 디스코드 봇','discord.py 2.x(기본) 또는 discord.js v14. 슬래시 커맨드, intents 명시, 토큰은 .env. 실행 방법 README 포함.'],minecraft:['⛏️ 마인크래프트','Java Edition 1.21 기준 명령어·mcfunction·데이터팩(pack.mcmeta, function 폴더 구조). 명령어 블록 체인은 순서·조건 명시. 스코어보드·execute 적극 활용.'],roblox:['🎮 로블록스 Luau','Roblox Studio Luau. Server/Client Script 구분, RemoteEvent, DataStore, 타입 주석. 어느 폴더에 넣는지 명시.'],python:['🐍 파이썬','Python 3.11+. 표준 라이브러리 우선, 필요 시 requirements.txt. argparse·로그·예외 처리. 실행 명령 README.'],flask:['🌍 Flask 서버','Flask 앱 + 정적 index.html. 라우트·JSON API·CORS. python app.py로 실행되게.'],linux:['🐧 리눅스·셸','bash 스크립트와 명령어. set -euo pipefail, 주석, 위험 명령 경고. nginx·systemd·포트포워딩 설정.'],ui:['🎨 UI 리터치','기존 HTML의 기능은 그대로, CSS·레이아웃·타이포·다크모드를 세련되게. 변경 전후 요약.'],gd:['🧩 지오메트리 대쉬','GD 레벨 데이터(.gmd XML / level string). 오브젝트 ID·좌표·그룹·트리거 설명. 검증 가능한 구조.'],data:['📊 데이터 처리','CSV/JSON/엑셀 처리. 파이썬(pandas 선택) 또는 브라우저 JS. 입력 예시와 출력 예시 포함.'],bot:['💬 텔레그램·카카오 봇','python-telegram-bot 또는 webhook 기반. 토큰 .env, 명령어 핸들러, 배포 방법.'],api:['🔌 API 연동','fetch/requests로 외부 API 호출. 키 분리, 에러 처리, 재시도, 캐시.'],ext:['🧩 크롬 확장','Manifest V3. popup/content/background 구조, 권한 최소화, 로드 방법.']};
+const CHIPS=[['🆕 새로 만들기','다음을 처음부터 만들어줘: '],['➕ 기능 추가','현재 프로젝트에 다음 기능을 추가해줘: '],['🐛 버그 수정','다음 문제를 고쳐줘: '],['🚑 에러 붙여넣기','이 에러를 해결해줘:\n'],['🎨 예쁘게','현재 UI를 세련되게 리터치해줘. 기능은 그대로.'],['📱 모바일 대응','모바일 화면에서도 잘 보이게 반응형으로 고쳐줘.'],['🧪 테스트','주요 기능이 깨지지 않았는지 점검하고 문제가 있으면 고쳐줘.'],['📖 설명','현재 코드 구조를 파일별로 설명해줘.'],['🚀 배포 안내','이 프로젝트를 깃허브 Pages(또는 적절한 곳)에 올리는 법을 단계별로 README.md로 써줘.']];
+
+/* ================= LLM LAYER ================= */
+const KEYS={gemini:()=>store.get('gkey',''),claude:()=>store.get('ckey','')};
+let models=store.get('models',[]);
+function engines(){const e=[];if(sampleFn)e.push(['builtin','🟣 내장 AI (claude.ai)']);if(KEYS.gemini()){(models.length?models:['gemini-2.5-flash','gemini-2.5-pro']).forEach(m=>e.push(['gemini:'+m,'🔵 '+m]))}if(KEYS.claude()){['claude-sonnet-5-5','claude-haiku-5-5'].forEach(m=>e.push(['claude:'+m,'🟠 '+m]))}return e}
+function curEngine(){const list=engines();const saved=store.get('engine','');return list.find(e=>e[0]===saved)?saved:(list[0]?list[0][0]:null)}
+async function fetchModels(){const k=KEYS.gemini();if(!k)return false;try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100',{headers:{'x-goog-api-key':k}});const j=await r.json();if(!j.models)throw new Error(j.error?.message||'목록 실패');models=j.models.filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/gemini/i.test(m.name)&&!/embedding|tts|image|audio|live/i.test(m.name)).map(m=>m.name.replace('models/','')).sort((a,b)=>{const sc=x=>(/pro/.test(x)?0:/flash/.test(x)&&!/lite/.test(x)?1:2)-(x.match(/(\d+(\.\d+)?)/)?+x.match(/(\d+(\.\d+)?)/)[1]:0)+(/preview|exp/.test(x)?.3:0);return sc(a)-sc(b)});store.set('models',models);return true}catch(e){toast('Gemini: '+e.message);return false}}
+async function llm(messages,{system,onText,signal,maxTokens=16000,json=false}={}){const eng=curEngine();if(!eng)throw new Error('사용할 수 있는 AI 엔진이 없어요. 설정에서 키를 넣거나 claude.ai에서 여세요.');bumpUse();
+ if(eng==='builtin'){const turns=[{role:'user',content:system+'\n\n(위 지시를 따르되 아래 대화에 답하라)'},...messages.map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content}))];if(turns[turns.length-1].role!=='user')turns.push({role:'user',content:'계속'});const r=await sampleFn(turns,{cache:false,signal,modelTier:'default',onText:onText?({text})=>onText(text):undefined});return r.text}
+ if(eng.startsWith('claude:')){const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal,headers:{'content-type':'application/json','x-api-key':KEYS.claude(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:eng.slice(7),max_tokens:maxTokens,stream:true,system,messages})});if(!res.ok)throw new Error((await res.json()).error?.message||res.status);return readSSE(res,l=>{if(!l.startsWith('data: '))return;try{const j=JSON.parse(l.slice(6));return j.type==='content_block_delta'?j.delta?.text||'':''}catch(e){return ''}},onText)}
+ const model=eng.slice(7);const body={systemInstruction:{parts:[{text:system}]},contents:messages.map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.content}]})),generationConfig:{temperature:0.25,maxOutputTokens:Math.min(maxTokens,65536)}};if(json)body.generationConfig.responseMimeType='application/json';const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,{method:'POST',signal,headers:{'content-type':'application/json','x-goog-api-key':KEYS.gemini()},body:JSON.stringify(body)});if(!res.ok){let msg=res.status+'';try{msg=(await res.json()).error?.message||msg}catch(e){}throw new Error(msg)}return readSSE(res,l=>{if(!l.startsWith('data:'))return;try{const j=JSON.parse(l.slice(5));return j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||''}catch(e){return ''}},onText)}
+async function readSSE(res,parse,onText){const rd=res.body.getReader(),dec=new TextDecoder();let buf='',acc='';while(true){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop();for(const l of lines){const t=parse(l);if(t){acc+=t;if(onText)onText(acc)}}}return acc}
+function bumpUse(){const u=store.get('usage',{n:0});u.n++;store.set('usage',u);$('#usage').textContent=`AI 호출 ${u.n}회`}
+
+/* ================= AGENT PROTOCOL ================= */
+const SYS_BASE=`너는 "코딩 집사 PRO", 자율적으로 코딩하는 에이전트다. 사용자는 한국어를 쓰는 학생 개발자다. 오직 프로그래밍 작업만 수행한다.
+출력 형식(엄수): 설명은 간단한 마크다운. 파일을 만들거나 수정할 때는 반드시 아래 블록을 쓴다.
+<<<FILE path/name.ext>>>
+(파일 전체 내용 — 일부가 아니라 전체)
+<<<END>>>
+파일 삭제: <<<DELETE path/name.ext>>>
+규칙:
+- 수정은 항상 파일 전체를 다시 출력한다(부분 패치 금지). 바뀌지 않은 파일은 출력하지 않는다.
+- 코드 안에 플레이스홀더(...생략, TODO, 여기에 코드)를 절대 쓰지 않는다. 완성된 동작 코드만.
+- HTML은 외부 CDN을 cdnjs.cloudflare.com만 사용. 이미지·폰트는 가능하면 없이.
+- 한국어 UI·주석. 모바일에서도 깨지지 않게.
+- 먼저 1~3문장으로 무엇을 할지 말하고, 파일 블록들을 출력하고, 마지막에 "✅ 확인 방법" 2~3줄.
+- 사용자가 특정 파일 이름을 말하지 않으면 웹은 index.html, 파이썬은 main.py, 봇은 bot.py를 쓴다.`;
+function sysPrompt(p){const d=DOMAINS[p.domain]||DOMAINS.web;return SYS_BASE+`\n\n[특화 분야: ${d[0]}]\n${d[1]}`+(p.memo?`\n\n[프로젝트 메모]\n${p.memo}`:'')}
+function filesContext(p){const names=Object.keys(p.files);if(!names.length)return '[현재 프로젝트에 파일 없음 — 새로 만든다]';let s='[현재 프로젝트 파일]\n';let budget=180000;for(const n of names){const c=p.files[n].content;const take=Math.min(c.length,Math.max(2000,Math.floor(budget/names.length)));s+=`\n<<<FILE ${n}>>>\n${c.slice(0,take)}${take<c.length?'\n…(길어서 생략, 총 '+c.length+'자)':''}\n<<<END>>>\n`}return s}
+function parseFiles(text){const out=[];const re=/<<<FILE\s+([^\n>]+?)\s*>>>\n([\s\S]*?)\n?<<<END>>>/g;let m;while((m=re.exec(text))){let c=m[2];c=c.replace(/^```[\w-]*\n/,'').replace(/\n```\s*$/,'');out.push({path:m[1].trim(),content:c})}const dels=[...text.matchAll(/<<<DELETE\s+([^\n>]+?)\s*>>>/g)].map(x=>x[1].trim());return {files:out,dels}}
+function stripBlocks(text){return text.replace(/<<<FILE\s+([^\n>]+?)\s*>>>[\s\S]*?<<<END>>>/g,(m,p)=>`\n📄 **${p}** (파일 블록)\n`).replace(/<<<DELETE\s+([^\n>]+?)\s*>>>/g,'🗑️ $1 삭제')}
+function applyFiles(p,parsed){const changed=[];parsed.files.forEach(f=>{const prev=p.files[f.path];p.files[f.path]={content:f.content,t:Date.now(),status:prev?'mod':'new',prev:prev?prev.content:null};changed.push({path:f.path,kind:prev?'mod':'new'})});parsed.dels.forEach(d=>{if(p.files[d]){delete p.files[d];changed.push({path:d,kind:'del'})}});saveP();return changed}
+
+/* ================= RUNNER (HTML/JS verification) ================= */
+function entryHtml(p){const names=Object.keys(p.files);return p.files['index.html']?'index.html':names.find(n=>/\.html?$/i.test(n))}
+function bundleHtml(p,entry){let html=p.files[entry].content;html=html.replace(/<link[^>]+href="(?!https?:)([^"]+\.css)"[^>]*>/gi,(m,h)=>p.files[h]?`<style>${p.files[h].content}</style>`:m).replace(/<script[^>]+src="(?!https?:)([^"]+\.js)"[^>]*><\/script>/gi,(m,s)=>p.files[s]?`<script>${p.files[s].content.replace(/<\/script>/gi,'<\\/script>')}<\/script>`:m);const hook=`<script>(function(){const s=(t,a)=>{try{parent.postMessage({cbp:1,t,a:[...a].map(x=>{try{return x instanceof Error?x.message+(x.stack?'\\n'+x.stack.split('\\n').slice(0,2).join('\\n'):''):typeof x==='string'?x:JSON.stringify(x)}catch(e){return String(x)}})},'*')}catch(e){}};['log','warn','error'].forEach(k=>{const o=console[k];console[k]=function(){s(k,arguments);o.apply(console,arguments)}});window.addEventListener('error',e=>s('error',[e.message+' (줄 '+e.lineno+')']));window.addEventListener('unhandledrejection',e=>s('error',['Promise 오류: '+(e.reason&&e.reason.message||e.reason)]));window.addEventListener('load',()=>setTimeout(()=>s('__ready',[document.body?document.body.innerText.slice(0,200):'']),400))})();<\/script>`;return /<head[^>]*>/i.test(html)?html.replace(/<head([^>]*)>/i,`<head$1>${hook}`):hook+html}
+function runProject(p,{silent}={}){return new Promise(res=>{const entry=entryHtml(p);if(!entry){res({ok:true,skipped:true,errors:[],note:'실행할 HTML 없음'});return}consoleLines=[];const errors=[];let ready=false;const handler=e=>{if(!e.data||!e.data.cbp)return;const line=`[${e.data.t}] ${e.data.a.join(' ')}`;if(e.data.t==='__ready'){ready=true;return}consoleLines.push({t:e.data.t,line});if(e.data.t==='error')errors.push(e.data.a.join(' '));renderConsoleLive()};window.addEventListener('message',handler);
+ let f=$('#runFrame');if(!f||silent){f=document.createElement('iframe');f.style.cssText='position:fixed;width:600px;height:400px;left:-9999px;top:0';f.sandbox='allow-scripts allow-forms allow-modals';document.body.appendChild(f);f._tmp=true}f.srcdoc=bundleHtml(p,entry);setTimeout(()=>{window.removeEventListener('message',handler);if(f._tmp)f.remove();const syntaxErr=errors.find(e=>/SyntaxError|Unexpected token|is not defined|Cannot read|null \(reading/.test(e));res({ok:errors.length===0,errors:[...new Set(errors)].slice(0,8),ready,note:errors.length?`오류 ${errors.length}개`:ready?'정상 실행':'로드 완료(ready 미수신)'})},2600)})}
+function jsSyntaxCheck(p){const errs=[];for(const [n,f] of Object.entries(p.files)){if(/\.js$/i.test(n)){try{new Function(f.content)}catch(e){errs.push(`${n}: ${e.message}`)}}if(/\.html?$/i.test(n)){const scripts=[...f.content.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi)];scripts.forEach((m,i)=>{try{new Function(m[1])}catch(e){errs.push(`${n} <script#${i+1}>: ${e.message}`)}})}if(/\.json$/i.test(n)){try{JSON.parse(f.content)}catch(e){errs.push(`${n}: JSON ${e.message}`)}}}return errs}
+
+/* ================= AGENT LOOP ================= */
+function addEvent(p,ev){ev.t=Date.now();p.events.push(ev);if(p.events.length>200)p.events.shift();saveP();renderLog();return ev}
+async function runTask(text){if(busy)return;const p=P();const eng=curEngine();if(!eng){openKey();return}busy=true;abort=new AbortController();$('#stopBtn').hidden=false;$('#send').disabled=true;
+ addEvent(p,{kind:'user',text});const steps=[];const stepEv=addEvent(p,{kind:'steps',steps});const setStep=(name,st)=>{const s=steps.find(x=>x.name===name);if(s)s.st=st;else steps.push({name,st});saveP();renderLog()};
+ const hist=p.events.filter(e=>e.kind==='user'||e.kind==='assistant').slice(-8).map(e=>({role:e.kind==='user'?'user':'assistant',content:e.kind==='assistant'?stripBlocks(e.text).slice(0,4000):e.text}));
+ try{
+  let plan='';if($('#planFirst').checked&&Object.keys(p.files).length===0&&text.length>15){setStep('계획','run');plan=await llm([...hist.slice(0,-1),{role:'user',content:`${filesContext(p)}\n\n요청: ${text}\n\n파일을 만들기 전에 계획만 세워라: 만들 파일 목록(이름과 역할 한 줄), 핵심 기능 5~10개, 주의할 점 3개. 마크다운 리스트로, 코드 없이, 300자 이내.`}],{system:sysPrompt(p),signal:abort.signal,maxTokens:1500});addEvent(p,{kind:'plan',text:plan});setStep('계획','done')}
+  setStep('코드 작성','run');const ev=addEvent(p,{kind:'assistant',text:'',streaming:true});const full=await llm([...hist.slice(0,-1),{role:'user',content:`${filesContext(p)}\n\n${plan?'[계획]\n'+plan+'\n\n':''}요청: ${text}\n\n위 형식(<<<FILE>>> 블록)으로 파일 전체를 출력하라.`}],{system:sysPrompt(p),signal:abort.signal,onText:t=>{ev.text=t;renderStreaming(ev)}});ev.text=full;ev.streaming=false;let parsed=parseFiles(full);let changed=applyFiles(p,parsed);ev.changed=changed;saveP();renderLog();renderTree();setStep('코드 작성','done');
+  if(!changed.length&&/만들|추가|고쳐|수정|구현|작성/.test(text)){addEvent(p,{kind:'warn',text:'파일 블록이 출력되지 않았어요. "파일로 만들어줘"라고 다시 요청하거나 엔진을 바꿔 보세요.'})}
+  if(changed.length&&$('#autoFix').checked){const max=+$('#maxFix').value;for(let i=1;i<=max;i++){if(abort.signal.aborted)break;setStep(`검증 ${i}`,'run');const syn=jsSyntaxCheck(p);const run=syn.length?{ok:false,errors:syn,note:'문법 오류'}:await runProject(p,{silent:true});if(run.ok){setStep(`검증 ${i}`,'done');addEvent(p,{kind:'ok',text:`✅ ${run.skipped?'실행 가능한 HTML이 없어 문법 검사만 통과':'실행 검증 통과 — '+run.note}`});break}setStep(`검증 ${i}`,'fail');addEvent(p,{kind:'err',text:`⚠️ 실행 중 오류 ${run.errors.length}개 발견 → 자동 수정 ${i}/${max}\n\n`+run.errors.map(e=>'- `'+e+'`').join('\n')});if(i===max){addEvent(p,{kind:'warn',text:'자동 수정 한도에 도달했어요. 오류를 복사해 다시 요청해 보세요.'});break}
+   setStep(`수정 ${i}`,'run');const fev=addEvent(p,{kind:'assistant',text:'',streaming:true});const fix=await llm([{role:'user',content:`${filesContext(p)}\n\n이 프로젝트를 실행했더니 다음 오류가 났다:\n${run.errors.map(e=>'- '+e).join('\n')}\n\n원인을 1줄로 말하고, 오류가 있는 파일 전체를 <<<FILE>>> 블록으로 다시 출력해 고쳐라. 다른 파일은 건드리지 마라.`}],{system:sysPrompt(p),signal:abort.signal,onText:t=>{fev.text=t;renderStreaming(fev)}});fev.text=fix;fev.streaming=false;fev.changed=applyFiles(p,parseFiles(fix));saveP();renderLog();renderTree();setStep(`수정 ${i}`,'done')}}
+  if(entryHtml(p)){sideTab='run';renderSide()}else if(changed.length){p.open=changed[0].path;sideTab='edit';renderSide()}
+ }catch(e){addEvent(p,{kind:'err',text:'⚠️ '+(e.name==='AbortError'||e.code==='cancelled'?'중지됨':(e.message||e.code||e)+(/API key|401|403/i.test(e.message)?' — 설정에서 키 확인':/429|quota|RESOURCE_EXHAUSTED|rate_limited/i.test(e.message||e.code)?' — 할당량 초과, 잠시 후 또는 다른 모델':''))});steps.forEach(s=>{if(s.st==='run')s.st='fail'})}
+ busy=false;abort=null;$('#stopBtn').hidden=true;$('#send').disabled=false;saveP();renderLog()}
+
+/* ================= RENDER ================= */
+function md(t){try{return marked.parse(t,{breaks:true,mangle:false,headerIds:false})}catch(e){return esc(t)}}
+function renderProjects(){$('#projects').innerHTML=projects.map(p=>`<button class="${p.id===cur?'on':''}" data-p="${p.id}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(DOMAINS[p.domain]||DOMAINS.web)[0].split(' ')[0]} ${esc(p.name)}</span><span class="x" data-x="${p.id}">✕</span></button>`).join('');$$('[data-p]').forEach(b=>b.onclick=e=>{if(e.target.dataset.x){if(projects.length===1){toast('마지막 프로젝트는 지울 수 없어요');return}confirmBox(`"${esc(projects.find(p=>p.id===e.target.dataset.x).name)}" 프로젝트를 지울까요? 파일과 기록이 삭제됩니다.`,()=>{projects=projects.filter(p=>p.id!==e.target.dataset.x);if(cur===e.target.dataset.x)cur=projects[0].id;store.set('cur',cur);saveP();renderAll()});return}cur=b.dataset.p;store.set('cur',cur);renderAll();$('#rail').classList.remove('show')});$('#projTitle').textContent=P().name;
+ const eng=curEngine();$('#keyDot').className='dot'+(eng?' on':'');$('#keyState').textContent=eng?(eng==='builtin'?'내장 AI':eng.startsWith('gemini')?'Gemini':'Claude')+' 연결':'엔진 없음';$('#engineLabel').textContent=eng?engines().find(e=>e[0]===eng)[1]:'설정에서 키를 넣으세요';const u=store.get('usage',{n:0});$('#usage').textContent=`AI 호출 ${u.n}회`;
+ $('#engineSel').innerHTML=engines().map(e=>`<option value="${e[0]}" ${e[0]===eng?'selected':''}>${e[1]}</option>`).join('')||'<option>엔진 없음</option>';$('#engineSel').onchange=e=>{store.set('engine',e.target.value);renderProjects()};
+ $('#domainSel').innerHTML=Object.entries(DOMAINS).map(([k,v])=>`<option value="${k}" ${P().domain===k?'selected':''}>${v[0]}</option>`).join('');$('#domainSel').onchange=e=>{P().domain=e.target.value;saveP();renderProjects()}}
+function renderTree(){const p=P();const names=Object.keys(p.files).sort();$('#tree').innerHTML=names.map(n=>`<div class="f ${p.open===n?'on':''}" data-f="${esc(n)}"><span class="st ${p.files[n].status||''}"></span><b>${esc(n)}</b><small>${(p.files[n].content.length/1024).toFixed(1)}K</small><span data-fx="${esc(n)}" style="opacity:.5">✕</span></div>`).join('')||'<p style="color:var(--muted);font-size:12px;padding:8px;font-family:var(--body)">아직 파일이 없어요. 아래에 만들고 싶은 걸 적으면 집사가 파일을 만듭니다. 기존 파일은 ⬆로 올리세요.</p>';$$('[data-f]').forEach(d=>d.onclick=e=>{if(e.target.dataset.fx){confirmBox(`${e.target.dataset.fx} 파일을 지울까요?`,()=>{delete p.files[e.target.dataset.fx];if(p.open===e.target.dataset.fx)p.open=null;saveP();renderTree();renderSide()});return}p.open=d.dataset.f;saveP();renderTree();sideTab='edit';renderSide();$('#side').classList.add('show')})}
+function renderChips(){$('#chips').innerHTML=CHIPS.map((c,i)=>`<button data-c="${i}">${c[0]}</button>`).join('');$$('[data-c]').forEach(b=>b.onclick=()=>{const inp=$('#input');inp.value=CHIPS[+b.dataset.c][1]+(inp.value?'\n'+inp.value:'');inp.focus()})}
+function evHtml(ev){if(ev.kind==='user')return `<div class="ev user"><div class="ic">🧑</div><div class="bd">${esc(ev.text).replace(/\n/g,'<br>')}</div></div>`;if(ev.kind==='steps')return `<div class="ev"><div class="ic">⚙️</div><div class="bd"><div class="eyebrow">진행</div><div class="steps">${ev.steps.map(s=>`<span class="step ${s.st}">${s.st==='run'?'<span class="spin"></span>':s.st==='done'?'✓':s.st==='fail'?'✗':'·'} ${esc(s.name)}</span>`).join('')||'<span class="step">대기</span>'}</div></div></div>`;if(ev.kind==='plan')return `<div class="ev plan"><div class="ic">🗺️</div><div class="bd"><div class="eyebrow">계획</div>${md(ev.text)}</div></div>`;if(ev.kind==='ok')return `<div class="ev ok"><div class="ic">✅</div><div class="bd">${md(ev.text)}</div></div>`;if(ev.kind==='err'||ev.kind==='warn')return `<div class="ev err"><div class="ic">${ev.kind==='err'?'⚠️':'💡'}</div><div class="bd">${md(ev.text)}</div></div>`;
+ const body=ev.streaming?esc(stripBlocks(ev.text)).replace(/\n/g,'<br>')+' ▍':md(stripBlocks(ev.text));return `<div class="ev"><div class="ic">🤖</div><div class="bd">${body}${ev.changed&&ev.changed.length?`<div class="filechg">${ev.changed.map(c=>`<div data-open="${esc(c.path)}"><span class="pill ${c.kind==='new'?'g':c.kind==='del'?'r':'a'}">${c.kind==='new'?'새 파일':c.kind==='del'?'삭제':'수정'}</span>${esc(c.path)}${c.kind==='mod'?`<button class="sm" data-diff="${esc(c.path)}" style="margin-left:auto">↔ 변경 보기</button>`:''}</div>`).join('')}</div>`:''}</div></div>`}
+function renderLog(){const p=P();const el=$('#log');const atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;el.innerHTML=p.events.map(evHtml).join('')||`<div style="align-self:center;text-align:center;color:var(--muted);margin-top:40px;max-width:560px"><div style="font-size:40px">&gt;_</div><b style="color:var(--fg)">코딩 집사 PRO</b><p>만들고 싶은 것을 한 줄로 적으면 집사가 <b>계획 → 파일 작성 → 실행 검증 → 자동 수정</b>까지 합니다.<br>기존 파일은 왼쪽 ⬆로 올리고 "여기에 ~ 추가해줘"라고 하세요.</p><div class="domain" style="margin-top:12px;text-align:left">${Object.entries(DOMAINS).map(([k,v])=>`<button data-dm="${k}" class="${p.domain===k?'act':''}">${v[0]}<small>${v[1].split('.')[0].slice(0,28)}…</small></button>`).join('')}</div>${curEngine()?'':'<p style="margin-top:14px"><button class="pri" id="firstKey">🔑 먼저 API 키 넣기</button></p>'}</div>`;$$('[data-dm]').forEach(b=>b.onclick=()=>{p.domain=b.dataset.dm;saveP();renderProjects();renderLog()});const fk=$('#firstKey');if(fk)fk.onclick=openKey;$$('[data-open]').forEach(d=>d.onclick=e=>{if(e.target.dataset.diff)return;p.open=d.dataset.open;saveP();renderTree();sideTab='edit';renderSide()});$$('[data-diff]').forEach(b=>b.onclick=()=>showDiff(b.dataset.diff));if(atBottom)el.scrollTop=el.scrollHeight}
+function renderStreaming(ev){const el=$('#log');const bds=el.querySelectorAll('.ev');const last=bds[bds.length-1];if(last&&last.querySelector('.ic').textContent==='🤖'){last.querySelector('.bd').innerHTML=esc(stripBlocks(ev.text)).replace(/\n/g,'<br>')+' ▍';el.scrollTop=el.scrollHeight}else renderLog()}
+function renderSide(){$$('[data-st]').forEach(b=>b.classList.toggle('on',b.dataset.st===sideTab));const p=P();const body=$('#sideBody');
+ if(sideTab==='run'){const entry=entryHtml(p);body.innerHTML=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="eyebrow">실행 ${entry?'· '+esc(entry):''}</span><span style="flex:1"></span><button class="sm" id="rerun">↻ 다시 실행</button><button class="sm" id="newWin">새 창</button><button class="sm pri" id="dlZip">📦 zip</button></div>${entry?`<iframe id="runFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>`:'<p style="color:var(--muted);font-size:13px">실행할 HTML 파일이 없어요. 웹 프로젝트를 만들면 여기서 바로 돌아갑니다. 파이썬·봇 등은 파일을 받아 내 컴퓨터에서 실행하세요.</p>'}<div class="eyebrow">콘솔</div><pre class="console" id="consoleBox"></pre>`;if(entry){runProject(p)}renderConsoleLive();$('#rerun').onclick=()=>renderSide();$('#newWin').onclick=()=>{if(!entry)return;const w=window.open('about:blank');if(w){w.document.write(bundleHtml(p,entry));w.document.close()}else toast('팝업 차단됨')};$('#dlZip').onclick=()=>zipDownload(p)}
+ if(sideTab==='edit'){const n=p.open||Object.keys(p.files)[0];if(!n){body.innerHTML='<p style="color:var(--muted);font-size:13px">열 파일이 없어요.</p>';return}const f=p.files[n];body.innerHTML=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="eyebrow" style="font-family:var(--mono);text-transform:none">${esc(n)}</span><span style="flex:1"></span><button class="sm" id="edCopy">복사</button><button class="sm" id="edDl">⬇</button>${f.prev?'<button class="sm" id="edDiff">↔ 변경</button>':''}<button class="sm pri" id="edSave">저장</button></div><textarea class="editor" id="ed" spellcheck="false">${esc(f.content)}</textarea><p style="font-size:11px;color:var(--muted);margin:0">직접 고친 뒤 저장하면 다음 요청에 반영돼요. Tab 키로 들여쓰기.</p>`;const ed=$('#ed');ed.onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();const s=ed.selectionStart;ed.value=ed.value.slice(0,s)+'  '+ed.value.slice(ed.selectionEnd);ed.selectionStart=ed.selectionEnd=s+2}};$('#edSave').onclick=()=>{f.prev=f.content;f.content=ed.value;f.status='mod';f.t=Date.now();saveP();renderTree();toast('저장')};$('#edCopy').onclick=()=>navigator.clipboard.writeText(ed.value).then(()=>toast('복사')).catch(()=>toast('복사 차단'));$('#edDl').onclick=()=>download(n.split('/').pop(),ed.value);const dd=$('#edDiff');if(dd)dd.onclick=()=>showDiff(n)}
+ if(sideTab==='console'){body.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><span class="eyebrow">콘솔 전체</span><span style="flex:1"></span><button class="sm" id="cCopy">오류 복사해서 요청에</button></div><pre class="console" id="consoleBox" style="max-height:none;flex:1"></pre>`;renderConsoleLive();$('#cCopy').onclick=()=>{const errs=consoleLines.filter(l=>l.t==='error').map(l=>l.line).join('\n');if(!errs){toast('오류 없음');return}$('#input').value='이 에러를 해결해줘:\n'+errs;$('#input').focus()}}}
+function renderConsoleLive(){const c=$('#consoleBox');if(!c)return;c.innerHTML=consoleLines.map(l=>`<div class="${l.t==='error'?'e':l.t==='warn'?'w':''}">${esc(l.line)}</div>`).join('')||'<span style="color:var(--muted)">(출력 없음)</span>';c.scrollTop=c.scrollHeight}
+function showDiff(path){const f=P().files[path];if(!f||f.prev==null){toast('이전 버전이 없어요');return}const a=f.prev.split('\n'),b=f.content.split('\n');const sa=new Set(a),sb=new Set(b);const rows=[];b.forEach(l=>rows.push(sa.has(l)?esc(l):`<span class="add">+ ${esc(l)}</span>`));a.forEach(l=>{if(!sb.has(l))rows.push(`<span class="del">- ${esc(l)}</span>`)});const box=document.createElement('div');box.className='overlay';box.innerHTML=`<div class="box" style="width:min(1000px,100%)"><div style="display:flex;justify-content:space-between;align-items:center"><b>↔ ${esc(path)} 변경</b><span><button class="sm" id="revert">이전 버전으로 되돌리기</button> <button class="sm" id="dx">닫기</button></span></div><p style="font-size:12px;color:var(--muted)">초록 +추가 · 빨강 −삭제 (줄 단위)</p><pre class="diff" style="max-height:70vh;overflow:auto">${rows.join('\n')}</pre></div>`;document.body.appendChild(box);$('#dx').onclick=()=>box.remove();$('#revert').onclick=()=>{const t=f.content;f.content=f.prev;f.prev=t;saveP();box.remove();renderTree();renderSide();toast('되돌렸어요')}}
+function confirmBox(msg,fn){const box=document.createElement('div');box.className='overlay';box.innerHTML=`<div class="box"><p style="margin:0 0 12px">${msg}</p><div style="display:flex;gap:8px"><button class="pri" id="yes" style="background:var(--red);border-color:var(--red)">확인</button><button id="no">취소</button></div></div>`;document.body.appendChild(box);$('#no').onclick=()=>box.remove();$('#yes').onclick=()=>{fn();box.remove()}}
+let dlFn=null;async function saveBlob(name,blob){if(dlFn){try{await dlFn.save({filename:name,data:blob});return}catch(e){if(e&&e.code==='cancelled')return}}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function download(name,content){saveBlob(name,new Blob([content],{type:'text/plain;charset=utf-8'}))}
+function _oldDownload(name,content){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+async function zipDownload(p){const names=Object.keys(p.files);if(!names.length){toast('파일 없음');return}const z=new JSZip();names.forEach(n=>z.file(n,p.files[n].content));const b=await z.generateAsync({type:'blob'});saveBlob(p.name.replace(/[\\/:*?"<>|]/g,'_')+'.zip',b)}
+async function handleFiles(list){const p=P();let n=0;for(const f of list){if(f.name.endsWith('.zip')){try{const z=await JSZip.loadAsync(f);for(const [path,e] of Object.entries(z.files)){if(e.dir||/(^|\/)\./.test(path)||/\.(png|jpe?g|gif|webp|ico|mp3|mp4|woff2?|ttf|zip)$/i.test(path))continue;const c=await e.async('string');if(c.length<500000){p.files[path]={content:c,t:Date.now(),status:''};n++}}}catch(e){toast('zip 읽기 실패')}continue}if(f.size>500000){toast(f.name+' 너무 큼');continue}p.files[f.name]={content:await f.text(),t:Date.now(),status:''};n++}saveP();renderTree();toast(n+'개 추가');$('#fileIn').value=''}
+$('#fileIn').onchange=e=>handleFiles(e.target.files);$('#upBtn').onclick=()=>$('#fileIn').click();$('#zipBtn').onclick=()=>zipDownload(P());
+document.addEventListener('dragover',e=>e.preventDefault());document.addEventListener('drop',e=>{e.preventDefault();if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files)});
+
+/* ================= UI WIRING ================= */
+function send(){const inp=$('#input');const t=inp.value.trim();if(!t)return;inp.value='';runTask(t)}
+$('#send').onclick=send;$('#input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}};$('#stopBtn').onclick=()=>abort&&abort.abort();
+$('#newProj').onclick=()=>{const box=document.createElement('div');box.className='overlay';box.innerHTML=`<div class="box"><h3 style="margin:0 0 8px">새 프로젝트</h3><input type="text" id="pn" placeholder="이름 (예: 국어 교실, 디스코드 자판기 봇)" style="width:100%;margin-bottom:8px"><select id="pd" style="width:100%;margin-bottom:8px">${Object.entries(DOMAINS).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('')}</select><textarea id="pm" placeholder="메모 (선택): 규칙·스타일·참고 사항. 매 요청에 함께 전달됩니다." style="width:100%;min-height:80px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="ok">만들기</button><button id="no">취소</button></div></div>`;document.body.appendChild(box);$('#pn').focus();$('#no').onclick=()=>box.remove();$('#ok').onclick=()=>{const n=$('#pn').value.trim();if(!n)return;const id='p'+Date.now();projects.push({id,name:n,domain:$('#pd').value,memo:$('#pm').value.trim(),files:{},events:[],open:null});cur=id;store.set('cur',cur);saveP();box.remove();renderAll()}};
+$('#memoBtn').onclick=()=>{const p=P();const box=document.createElement('div');box.className='overlay';box.innerHTML=`<div class="box"><h3 style="margin:0 0 8px">📎 프로젝트 메모</h3><input type="text" id="pn" value="${esc(p.name)}" style="width:100%;margin-bottom:8px"><textarea id="pm" style="width:100%;min-height:120px" placeholder="예: 선생님/학생 로그인 구조, 보라색 테마, 한글 폰트는 Noto Sans KR">${esc(p.memo)}</textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="ok">저장</button><button id="no">취소</button></div></div>`;document.body.appendChild(box);$('#no').onclick=()=>box.remove();$('#ok').onclick=()=>{p.name=$('#pn').value.trim()||p.name;p.memo=$('#pm').value.trim();saveP();box.remove();renderAll()}};
+$('#histClr').onclick=()=>confirmBox('작업 기록을 비울까요? (파일은 남습니다)',()=>{P().events=[];saveP();renderLog()});
+$$('[data-st]').forEach(b=>b.onclick=()=>{sideTab=b.dataset.st;renderSide()});
+$('#railBtn').onclick=()=>$('#rail').classList.add('show');$('#railX').onclick=()=>$('#rail').classList.remove('show');$('#sideBtn').onclick=()=>$('#side').classList.add('show');$('#sideX').onclick=()=>$('#side').classList.remove('show');
+function openKey(){const box=document.createElement('div');box.className='overlay';box.innerHTML=`<div class="box"><h3 style="margin:0 0 6px">🔑 AI 엔진 설정</h3><p style="font-size:13px;color:var(--muted);margin:0 0 12px">키는 이 브라우저에만 저장돼요. 깃허브 코드에는 들어가지 않습니다.${sampleFn?' <span class="pill g">내장 AI 사용 가능</span> 키 없이도 됩니다.':''}</p>
+ <label class="eyebrow">Gemini API 키</label><input type="password" id="gk" value="${esc(KEYS.gemini())}" placeholder="AIza..." style="width:100%;margin:4px 0 10px;font-family:var(--mono)">
+ <label class="eyebrow">Claude API 키 (선택)</label><input type="password" id="ck" value="${esc(KEYS.claude())}" placeholder="sk-ant-..." style="width:100%;margin:4px 0 14px;font-family:var(--mono)">
+ <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pri" id="ks">저장하고 연결 확인</button><button id="kx">닫기</button><span style="flex:1"></span><button id="kdel" style="color:var(--red)">키 삭제</button></div><div id="kmsg" style="font-size:13px;margin-top:8px;min-height:20px"></div></div>`;document.body.appendChild(box);$('#kx').onclick=()=>box.remove();$('#kdel').onclick=()=>{store.set('gkey','');store.set('ckey','');models=[];store.set('models',[]);store.set('engine','');renderAll();box.remove()};
+ $('#ks').onclick=async()=>{store.set('gkey',$('#gk').value.trim());store.set('ckey',$('#ck').value.trim());$('#kmsg').textContent='연결 확인 중…';const ok=KEYS.gemini()?await fetchModels():true;if(ok){$('#kmsg').innerHTML=`<span class="pill g">연결 성공</span> ${models.length?'Gemini 모델 '+models.length+'개':''}`;store.set('engine','');renderAll();setTimeout(()=>box.remove(),900)}else $('#kmsg').innerHTML='<span class="pill r">연결 실패</span> 키를 확인하세요'}}
+$('#setKey').onclick=openKey;
+function renderAll(){renderProjects();renderTree();renderChips();renderLog();renderSide()}
+renderAll();
+(async()=>{try{if(window.claude&&claude.use){sampleFn=await claude.use('sample');dlFn=await claude.use('downloads')}}catch(e){sampleFn=null}if(KEYS.gemini()&&!models.length)await fetchModels();renderAll()})();
+</script>
+</body>
+</html>
