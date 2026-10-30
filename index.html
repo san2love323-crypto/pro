@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>코딩 집사 PRO 2.2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -83,8 +80,6 @@ textarea{resize:vertical;line-height:1.5}
 @media (max-width:1100px){.app{grid-template-columns:1fr}.rail,.side{display:none}.rail.show,.side.show{display:flex;position:fixed;inset:0;z-index:15}.mob{display:inline-flex}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
-</head>
-<body>
 
 <div class="app">
  <aside class="rail" id="rail">
@@ -325,8 +320,8 @@ function toolList(){const t=[...TOOLS];if(store.get('webSearch',true))t.push({ty
 async function claudeTurn(model,system,messages,signal,onText,thinking){const body={model,max_tokens:16000,system,messages,tools:toolList(),stream:true};if(thinking)body.thinking={type:'enabled',budget_tokens:6000};let res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal,headers:{'content-type':'application/json','x-api-key':KEYS.claude(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});if(!res.ok){let m=res.status+'';try{m=(await res.json()).error?.message||m}catch(e){}if(/web_search/i.test(m)&&store.get('webSearch',true)){const cur=store.get('wsType',WS_TYPES[0]);const nxt=WS_TYPES[(WS_TYPES.indexOf(cur)+1)%WS_TYPES.length];if(nxt!==cur){store.set('wsType',nxt);body.tools=toolList();res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal,headers:{'content-type':'application/json','x-api-key':KEYS.claude(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});if(!res.ok){let m2=res.status+'';try{m2=(await res.json()).error?.message||m2}catch(e){}if(/web_search/i.test(m2)){store.set('webSearch',false);toast('이 계정에서 웹 검색 도구를 쓸 수 없어 껐습니다');body.tools=TOOLS;res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal,headers:{'content-type':'application/json','x-api-key':KEYS.claude(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});if(!res.ok){let m3=res.status+'';try{m3=(await res.json()).error?.message||m3}catch(e){}throw new Error(m3)}}else throw new Error(m2)}}else throw new Error(m)}else throw new Error(m)}
  const rd=res.body.getReader(),dec=new TextDecoder();let buf='';const blocks=[];let usage={input_tokens:0,output_tokens:0},stop='';let text='';
  while(true){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop();for(const l of lines){if(!l.startsWith('data: '))continue;let j;try{j=JSON.parse(l.slice(6))}catch(e){continue}
-  if(j.type==='message_start')usage.input_tokens=j.message.usage.input_tokens;if(j.type==='content_block_start'){const cb=j.content_block;blocks[j.index]=cb.type==='tool_use'?{type:'tool_use',id:cb.id,name:cb.name,_json:''}:cb.type==='server_tool_use'?{type:'server_tool_use',id:cb.id,name:cb.name,_json:''}:cb.type==='web_search_tool_result'?{type:'web_search_tool_result',tool_use_id:cb.tool_use_id,content:cb.content||[]}:cb.type==='thinking'?{type:'thinking',thinking:'',signature:''}:{type:'text',text:'',citations:[]}}
-  if(j.type==='content_block_delta'){const b=blocks[j.index];if(j.delta.type==='text_delta'){b.text+=j.delta.text;text+=j.delta.text;if(onText)onText(text)}if(j.delta.type==='citations_delta'&&b.citations){b.citations.push(j.delta.citation)}if(j.delta.type==='input_json_delta')b._json+=j.delta.partial_json;if(j.delta.type==='thinking_delta')b.thinking+=j.delta.thinking;if(j.delta.type==='signature_delta')b.signature+=j.delta.signature}
+  if(j.type==='message_start')usage.input_tokens=j.message.usage.input_tokens;if(j.type==='content_block_start'){const cb=j.content_block;blocks[j.index]=cb.type==='tool_use'?{type:'tool_use',id:cb.id,name:cb.name,_json:''}:cb.type==='server_tool_use'?{type:'server_tool_use',id:cb.id,name:cb.name,_json:''}:/_tool_result$/.test(cb.type)?{...cb,type:'web_search_tool_result',_orig:cb.type,tool_use_id:cb.tool_use_id,content:cb.content||[]}:cb.type==='thinking'?{type:'thinking',thinking:'',signature:''}:cb.type==='text'?{type:'text',text:'',citations:[]}:{...cb,_skip:true}}
+  if(j.type==='content_block_delta'){const b=blocks[j.index];if(!b||b._skip)continue;if(j.delta.type==='text_delta'){b.text+=j.delta.text;text+=j.delta.text;if(onText)onText(text)}if(j.delta.type==='citations_delta'&&b.citations){b.citations.push(j.delta.citation)}if(j.delta.type==='input_json_delta')b._json+=j.delta.partial_json;if(j.delta.type==='thinking_delta')b.thinking+=j.delta.thinking;if(j.delta.type==='signature_delta')b.signature+=j.delta.signature}
   if(j.type==='message_delta'){usage.output_tokens=j.usage.output_tokens;if(j.usage.server_tool_use)usage.searches=j.usage.server_tool_use.web_search_requests||0;stop=j.delta.stop_reason}}}
  blocks.forEach(b=>{if(b.type==='tool_use'||b.type==='server_tool_use'){try{b.input=JSON.parse(b._json||'{}')}catch(e){b.input={}}delete b._json}});return {blocks:blocks.filter(Boolean),usage,stop,text}}
 
@@ -339,7 +334,7 @@ async function runAgent(text,opts={}){const p=P();if(!KEYS.claude()){toast('도�
  try{while(turns<maxTurns){if(abort.signal.aborted)throw {name:'AbortError'};if(budget>0&&spent.v>=budget){addEvent(p,{kind:'warn',text:`일일 예산 $${budget} 도달 — 멈춥니다. 설정에서 예산을 올리세요.`});break}turns++;setStep(`턴 ${turns}`,'run');
   const ev=addEvent(p,{kind:'assistant',text:'',streaming:true});const r=await claudeTurn(model,SYS2,messages,abort.signal,t=>{ev.text=t;renderStreaming(ev)},opts.thinking&&turns===1);totalIn+=r.usage.input_tokens;totalOut+=r.usage.output_tokens;const c=cost(model,r.usage.input_tokens,r.usage.output_tokens);spent.v+=c;store.set('spentToday',spent);const u=store.get('usage',{n:0,usd:0});u.n++;u.usd=(u.usd||0)+c;store.set('usage',u);renderUsage();
   ev.text=r.text||'';ev.streaming=false;ev.model=model;saveP();
-  const toolUses=r.blocks.filter(b=>b.type==='tool_use');const assistantContent=r.blocks.map(b=>b.type==='thinking'?{type:'thinking',thinking:b.thinking,signature:b.signature}:b.type==='text'?{type:'text',text:b.text,...(b.citations&&b.citations.length?{citations:b.citations}:{})}:b.type==='server_tool_use'?{type:'server_tool_use',id:b.id,name:b.name,input:b.input}:b.type==='web_search_tool_result'?{type:'web_search_tool_result',tool_use_id:b.tool_use_id,content:b.content}:{type:'tool_use',id:b.id,name:b.name,input:b.input}).filter(b=>b.type!=='text'||b.text);
+  const toolUses=r.blocks.filter(b=>b.type==='tool_use');const assistantContent=r.blocks.map(b=>b.type==='thinking'?{type:'thinking',thinking:b.thinking,signature:b.signature}:b.type==='text'?{type:'text',text:b.text}:b.type==='server_tool_use'||b.type==='web_search_tool_result'||b._skip?null:{type:'tool_use',id:b.id,name:b.name,input:b.input}).filter(Boolean).filter(b=>b.type!=='text'||b.text);
   const searches=r.blocks.filter(b=>b.type==='server_tool_use');if(searches.length){const results=r.blocks.filter(b=>b.type==='web_search_tool_result');const links=[];results.forEach(rs=>(Array.isArray(rs.content)?rs.content:[]).forEach(c=>{if(c.url)links.push({t:c.title||c.url,u:c.url})}));addEvent(p,{kind:'search',queries:searches.map(x=>x.input&&x.input.query||''),links:links.slice(0,8)});if(r.usage.searches){spent.v+=r.usage.searches*0.01;store.set('spentToday',spent);const u2=store.get('usage',{n:0,usd:0});u2.usd=(u2.usd||0)+r.usage.searches*0.01;u2.searches=(u2.searches||0)+r.usage.searches;store.set('usage',u2);renderUsage()}}
   if(!toolUses.length){setStep(`턴 ${turns}`,'done');if(!ev.text)p.events.pop();renderLog();break}
   messages.push({role:'assistant',content:assistantContent});const results=[];const toolEv=addEvent(p,{kind:'tools',items:[]});
@@ -416,5 +411,4 @@ renderAll();
 (async()=>{try{if(window.claude&&claude.use){sampleFn=await claude.use('sample');dlFn=await claude.use('downloads')}}catch(e){sampleFn=null}if(KEYS.gemini()&&!models.length)await fetchModels();renderAll()})();
 </script>
 
-</body>
-</html>
+</body></html>
